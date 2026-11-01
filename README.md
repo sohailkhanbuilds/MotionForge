@@ -11,7 +11,8 @@ AI-assisted, markerless human motion capture for Blender.
 - Process recorded video (formats supported by OpenCV).
 - Detect one human body with MediaPipe Pose.
 - Extract 3D hip-centred world landmarks plus normalized image landmarks.
-- Smooth trajectories.
+- Confidence-weighted Gaussian smoothing to reduce jitter while preserving movement.
+- Use a robust short-window reference pose and confidence-gate unreliable joints during BVH export.
 - Export a generic humanoid BVH and landmark CSV.
 - Colab notebook for remote execution; no paid API key.
 
