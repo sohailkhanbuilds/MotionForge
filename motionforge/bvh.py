@@ -1,12 +1,9 @@
-"""Experimental BVH writer driven by MediaPipe world landmarks."""
+"""Experimental BVH writer driven by MediaPipe pose landmarks."""
 from __future__ import annotations
 from pathlib import Path
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-# BVH hierarchy. Offsets are inferred from the first detected frame.
-# Each joint's world orientation is estimated by aligning its rest child
-# vectors with the current child vectors; local rotations are parent-relative.
 HIERARCHY = [
     ("Hips", None, 23),
     ("Spine", "Hips", 11), ("Neck", "Spine", 0), ("Head", "Neck", None),
@@ -24,10 +21,13 @@ for name, parent, _ in HIERARCHY:
 
 
 def _point(frame, joint):
+    shoulders = (frame[11, :3] + frame[12, :3]) * 0.5
     if joint == "Hips":
         return (frame[23, :3] + frame[24, :3]) * 0.5
     if joint == "Spine":
-        return (frame[11, :3] + frame[12, :3]) * 0.5
+        return shoulders
+    if joint == "Neck":
+        return shoulders * 0.65 + frame[0, :3] * 0.35
     if joint == "LeftShoulder":
         return frame[11, :3]
     if joint == "RightShoulder":
@@ -41,41 +41,39 @@ def _joint_positions(frame):
 
 
 def _rotation_for_joint(name, rest, current):
-    children = CHILDREN[name]
-    pairs_a, pairs_b = [], []
-    for child in children:
+    a_vectors, b_vectors = [], []
+    for child in CHILDREN[name]:
         a = rest[child] - rest[name]
         b = current[child] - current[name]
         if np.linalg.norm(a) > 1e-5 and np.linalg.norm(b) > 1e-5:
-            pairs_a.append(a / np.linalg.norm(a))
-            pairs_b.append(b / np.linalg.norm(b))
-    if not pairs_a:
+            a_vectors.append(a / np.linalg.norm(a))
+            b_vectors.append(b / np.linalg.norm(b))
+    if not a_vectors:
         return Rotation.identity()
     try:
-        return Rotation.align_vectors(np.asarray(pairs_b), np.asarray(pairs_a))[0]
+        return Rotation.align_vectors(np.asarray(b_vectors), np.asarray(a_vectors))[0]
     except Exception:
         return Rotation.identity()
 
 
 def export_bvh(frames: np.ndarray, fps: float, output_path: str | Path):
-    """Write an approximate humanoid BVH file. Coordinates are converted to cm."""
-    valid_frames = [f for f in frames if float(f[:, 3].max()) > 0.2]
-    if not valid_frames:
+    """Write a generic humanoid BVH. Root screen-plane translation is approximate."""
+    valid = [f for f in frames if float(f[:, 3].max()) > 0.2]
+    if not valid:
         raise ValueError("No valid pose frames available for BVH export.")
-    rest = _joint_positions(valid_frames[0])
-    # Fill any missing joint positions using the rest pose to keep hierarchy valid.
-    for key, value in rest.items():
+    rest = _joint_positions(valid[0])
+    for name, value in rest.items():
         if value is None or not np.all(np.isfinite(value)):
-            rest[key] = np.zeros(3, dtype=float)
-    offsets = {}
-    for name, parent, _ in HIERARCHY:
-        offsets[name] = np.zeros(3) if parent is None else (rest[name] - rest[parent]) * 100.0
-
+            rest[name] = np.zeros(3, dtype=float)
+    offsets = {
+        name: np.zeros(3) if parent is None else (rest[name] - rest[parent]) * 100.0
+        for name, parent, _ in HIERARCHY
+    }
     lines = ["HIERARCHY"]
+
     def emit_joint(name, depth):
         pad = "  " * depth
-        lines.append(f"{pad}{'ROOT' if PARENTS[name] is None else 'JOINT'} {name}")
-        lines.append(f"{pad}{{")
+        lines.extend([f"{pad}{'ROOT' if PARENTS[name] is None else 'JOINT'} {name}", f"{pad}{{"])
         off = offsets[name]
         lines.append(f"{pad}  OFFSET {off[0]:.5f} {off[1]:.5f} {off[2]:.5f}")
         if PARENTS[name] is None:
@@ -85,15 +83,14 @@ def export_bvh(frames: np.ndarray, fps: float, output_path: str | Path):
         for child in CHILDREN[name]:
             emit_joint(child, depth + 1)
         if not CHILDREN[name]:
-            lines.append(f"{pad}  End Site")
-            lines.append(f"{pad}  {{")
-            lines.append(f"{pad}    OFFSET 0.00000 2.00000 0.00000")
-            lines.append(f"{pad}  }}")
+            lines.extend([f"{pad}  End Site", f"{pad}  {{", f"{pad}    OFFSET 0.00000 2.00000 0.00000", f"{pad}  }}"])
         lines.append(f"{pad}}}")
-    emit_joint("Hips", 0)
 
-    lines += ["MOTION", f"Frames: {len(frames)}", f"Frame Time: {1.0 / max(float(fps), 1.0):.8f}"]
-    rest_rot = {name: _rotation_for_joint(name, rest, rest) for name, _, _ in HIERARCHY}
+    emit_joint("Hips", 0)
+    frame_time = 1.0 / max(float(fps), 1.0)
+    lines.extend(["MOTION", f"Frames: {len(frames)}", f"Frame Time: {frame_time:.8f}"])
+    rest_hip_screen = (valid[0][23, 4:6] + valid[0][24, 4:6]) * 0.5 if frames.shape[2] >= 6 else None
+
     for frame in frames:
         current = _joint_positions(frame)
         for name in current:
@@ -103,14 +100,18 @@ def export_bvh(frames: np.ndarray, fps: float, output_path: str | Path):
         local_rot = {}
         for name, parent, _ in HIERARCHY:
             local_rot[name] = world_rot[name] if parent is None else world_rot[parent].inv() * world_rot[name]
+
         root_delta = (current["Hips"] - rest["Hips"]) * 100.0
-        values = [root_delta[0], root_delta[1], root_delta[2]]
+        # MediaPipe world landmarks are hip-centred, so estimate root translation
+        # from normalized image-space hip position. This is only a 2D screen-plane
+        # approximation (170 cm per image-height); it cannot recover true depth.
+        if rest_hip_screen is not None:
+            hip_screen = (frame[23, 4:6] + frame[24, 4:6]) * 0.5
+            if np.all(np.isfinite(hip_screen)) and float(frame[[23, 24], 3].min()) > 0.2:
+                delta = hip_screen - rest_hip_screen
+                root_delta = np.array([delta[0] * 170.0, -delta[1] * 170.0, 0.0])
+        values = root_delta.tolist()
         for name, _, _ in HIERARCHY:
-            # BVH channel order is Z, X, Y.
-            zxy = local_rot[name].as_euler("ZXY", degrees=True)
-            if name == "Hips":
-                values.extend(zxy.tolist())
-            else:
-                values.extend(zxy.tolist())
+            values.extend(local_rot[name].as_euler("ZXY", degrees=True).tolist())
         lines.append(" ".join(f"{v:.5f}" for v in values))
     Path(output_path).write_text("\n".join(lines) + "\n", encoding="utf-8")
