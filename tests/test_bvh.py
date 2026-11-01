@@ -28,3 +28,27 @@ def test_bvh_export_writes_hierarchy_and_motion(tmp_path):
     motion = text.split("MOTION", 1)[1].strip().splitlines()
     assert len(motion) == 5  # frame count, frame time, then three frames
     assert len(motion[2].split()) == 51  # 6 root channels + 15 non-root joints * 3
+
+
+def test_low_confidence_joint_uses_reference_pose():
+    from motionforge.bvh import _clean_positions, _joint_positions
+
+    frame = np.zeros((33, 6), dtype=np.float32)
+    frame[:, 3] = 1.0
+    frame[11, :3] = (-0.2, 0.5, 0.0)
+    frame[12, :3] = (0.2, 0.5, 0.0)
+    frame[13, :3] = (-0.4, 0.3, 0.0)
+    frame[15, :3] = (-0.6, 0.1, 0.0)
+    frame[23, :3] = (-0.15, 0.0, 0.0)
+    frame[24, :3] = (0.15, 0.0, 0.0)
+    frame[25, :3] = (-0.15, -0.4, 0.0)
+    frame[26, :3] = (0.15, -0.4, 0.0)
+    frame[27, :3] = (-0.15, -0.8, 0.0)
+    frame[28, :3] = (0.15, -0.8, 0.0)
+    frame[31, :3] = (-0.15, -0.9, 0.1)
+    frame[32, :3] = (0.15, -0.9, 0.1)
+    rest = _joint_positions(frame)
+    frame[15, :3] = (50.0, 50.0, 50.0)
+    frame[15, 3] = 0.05
+    current = _clean_positions(frame, rest)
+    np.testing.assert_allclose(current["LeftWrist"], rest["LeftWrist"])
