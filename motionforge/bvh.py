@@ -6,9 +6,9 @@ from scipy.spatial.transform import Rotation
 
 HIERARCHY = [
     ("Hips", None, 23),
-    ("Spine", "Hips", 11), ("Neck", "Spine", 0), ("Head", "Neck", None),
-    ("LeftShoulder", "Spine", 13), ("LeftElbow", "LeftShoulder", 15), ("LeftWrist", "LeftElbow", None),
-    ("RightShoulder", "Spine", 14), ("RightElbow", "RightShoulder", 16), ("RightWrist", "RightElbow", None),
+    ("Spine", "Hips", 11), ("Neck", "Spine", 0), ("Head", "Neck", 0),
+    ("LeftShoulder", "Spine", 11), ("LeftElbow", "LeftShoulder", 13), ("LeftWrist", "LeftElbow", 15),
+    ("RightShoulder", "Spine", 12), ("RightElbow", "RightShoulder", 14), ("RightWrist", "RightElbow", 16),
     ("LeftUpLeg", "Hips", 25), ("LeftLeg", "LeftUpLeg", 27), ("LeftFoot", "LeftLeg", 31),
     ("RightUpLeg", "Hips", 26), ("RightLeg", "RightUpLeg", 28), ("RightFoot", "RightLeg", 32),
 ]
@@ -92,7 +92,7 @@ def export_bvh(frames: np.ndarray, fps: float, output_path: str | Path):
     rest_hip_screen = (valid[0][23, 4:6] + valid[0][24, 4:6]) * 0.5 if frames.shape[2] >= 6 else None
 
     for frame in frames:
-        current = _joint_positions(frame)
+        current = rest.copy() if float(frame[:, 3].max()) <= 0.2 else _joint_positions(frame)
         for name in current:
             if current[name] is None or not np.all(np.isfinite(current[name])):
                 current[name] = rest[name]
