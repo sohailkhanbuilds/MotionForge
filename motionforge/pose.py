@@ -1,37 +1,22 @@
-"""Video pose extraction using MediaPipe's 3D world landmarks."""
+"""Video pose extraction using MediaPipe world and image landmarks."""
 from __future__ import annotations
-
 from pathlib import Path
 import cv2
 import mediapipe as mp
 import numpy as np
 
-# Stable, human-readable subset of MediaPipe Pose landmark indices.
-LANDMARKS = {
-    "hips": (23, 24),
-    "spine": (11, 12),
-    "neck": (11, 12),
-    "head": (0,),
-    "left_shoulder": (11,), "left_elbow": (13,), "left_wrist": (15,),
-    "right_shoulder": (12,), "right_elbow": (14,), "right_wrist": (16,),
-    "left_hip": (23,), "left_knee": (25,), "left_ankle": (27,),
-    "left_foot": (31,),
-    "right_hip": (24,), "right_knee": (26,), "right_ankle": (28,),
-    "right_foot": (32,),
-}
-
 
 def extract_video(video_path: str | Path, model_complexity: int = 0):
-    """Return (timestamps, landmark_frames, fps, frame_size).
+    """Return timestamps, frames, fps, frame_size.
 
-    Each landmark frame is a (33, 4) float array: world x/y/z in metres-ish
-    and visibility. MediaPipe world coordinates are hip-centred estimates.
+    Each frame has shape (33, 6): world x/y/z, visibility, normalized image x/y.
+    World coordinates are hip-centred; image coordinates provide approximate
+    screen-plane root motion. Neither is calibrated absolute world tracking.
     """
     path = str(video_path)
     cap = cv2.VideoCapture(path)
     if not cap.isOpened():
         raise ValueError(f"Could not open video: {path}")
-
     fps = float(cap.get(cv2.CAP_PROP_FPS))
     if not np.isfinite(fps) or fps <= 0.1 or fps > 240:
         fps = 30.0
@@ -39,12 +24,9 @@ def extract_video(video_path: str | Path, model_complexity: int = 0):
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     timestamps, frames = [], []
     pose = mp.solutions.pose.Pose(
-        static_image_mode=False,
-        model_complexity=int(model_complexity),
-        smooth_landmarks=True,
-        enable_segmentation=False,
-        min_detection_confidence=0.5,
-        min_tracking_confidence=0.5,
+        static_image_mode=False, model_complexity=int(model_complexity),
+        smooth_landmarks=True, enable_segmentation=False,
+        min_detection_confidence=0.5, min_tracking_confidence=0.5,
     )
     frame_index = 0
     try:
@@ -52,21 +34,20 @@ def extract_video(video_path: str | Path, model_complexity: int = 0):
             ok, bgr = cap.read()
             if not ok:
                 break
-            rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-            result = pose.process(rgb)
-            arr = np.zeros((33, 4), dtype=np.float32)
+            result = pose.process(cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB))
+            arr = np.zeros((33, 6), dtype=np.float32)
             if result.pose_world_landmarks:
                 for i, lm in enumerate(result.pose_world_landmarks.landmark):
-                    arr[i] = (lm.x, lm.y, lm.z, lm.visibility)
-            else:
-                arr[:, 3] = 0.0
+                    arr[i, :4] = (lm.x, lm.y, lm.z, lm.visibility)
+            if result.pose_landmarks:
+                for i, lm in enumerate(result.pose_landmarks.landmark):
+                    arr[i, 4:6] = (lm.x, lm.y)
             frames.append(arr)
             timestamps.append(frame_index / fps)
             frame_index += 1
     finally:
         pose.close()
         cap.release()
-
     if not frames:
         raise ValueError("The video contains no readable frames.")
     if not any(float(f[:, 3].max()) > 0.1 for f in frames):
