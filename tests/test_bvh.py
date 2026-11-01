@@ -27,4 +27,4 @@ def test_bvh_export_writes_hierarchy_and_motion(tmp_path):
     assert "Frames: 3" in text
     motion = text.split("MOTION", 1)[1].strip().splitlines()
     assert len(motion) == 5  # frame count, frame time, then three frames
-    assert len(motion[2].split()) == 54  # 6 root channels + 16 joints * 3
+    assert len(motion[2].split()) == 51  # 6 root channels + 15 non-root joints * 3
