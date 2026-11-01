@@ -2,27 +2,24 @@
 
 AI-assisted, markerless human motion capture for Blender.
 
-**Pipeline:** recorded video -> MediaPipe 3D pose landmarks -> smoothing -> BVH export -> Blender.
+**Pipeline:** recorded video -> MediaPipe 3D pose landmarks -> temporal smoothing -> experimental BVH export -> Blender.
 
-> MotionForge 0.1 is an experimental single-camera MVP. It estimates motion from MediaPipe world landmarks. It is not a professional optical motion-capture system: occlusion, depth ambiguity, foot sliding and imperfect retargeting are expected.
+> MotionForge 0.1 is an experimental single-camera MVP, not a professional optical motion-capture system. It estimates joint pose from MediaPipe world landmarks and estimates root travel from 2D image position. Occlusion, depth ambiguity, foot sliding and imperfect retargeting are expected.
 
 ## MVP features
 
-- Process a recorded video (MP4/MOV/AVI supported by your OpenCV build).
+- Process recorded video (formats supported by OpenCV).
 - Detect one human body with MediaPipe Pose.
-- Extract 3D world landmarks.
-- Smooth landmark trajectories.
-- Export a BVH skeleton animation.
-- Export landmark CSV for debugging.
-- Optional Colab notebook for cloud execution.
-- No paid API key required.
+- Extract 3D hip-centred world landmarks plus normalized image landmarks.
+- Smooth trajectories.
+- Export a generic humanoid BVH and landmark CSV.
+- Colab notebook for remote execution; no paid API key.
 
 ## Requirements
 
-- Python 3.10 or 3.11 recommended.
-- 8 GB RAM recommended; 4 GB may work with small/short videos but can be slow.
-- Webcam is not required for the first version; use a recorded video.
-- Blender 3.6+ for importing and inspecting BVH.
+- Python 3.10 or 3.11.
+- 8 GB RAM recommended. Your 4 GB PC may run short clips with the light model, but installation and processing may be slow.
+- Blender 3.6+ to inspect BVH.
 
 ## Install
 
@@ -32,8 +29,6 @@ cd MotionForge
 python -m venv .venv
 # Windows PowerShell:
 .venv\Scripts\Activate.ps1
-# macOS/Linux:
-# source .venv/bin/activate
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
@@ -44,58 +39,56 @@ pip install -r requirements.txt
 python -m motionforge --input path/to/video.mp4 --output-dir output
 ```
 
-Optional settings:
+Use the lightest model and short test clips on low-memory PCs:
 
 ```bash
 python -m motionforge --input walk.mp4 --output-dir output --model-complexity 0 --smooth-window 5
 ```
 
 Outputs:
-- `output/motionforge.bvh` - BVH animation.
-- `output/landmarks.csv` - per-frame 3D landmark positions and visibility.
-- `output/metadata.json` - source FPS, frame count, capture settings and notes.
+- `output/motionforge.bvh` - experimental BVH animation.
+- `output/landmarks.csv` - per-frame world/image landmarks and visibility.
+- `output/metadata.json` - source details and known limitations.
 
-### Import into Blender
+## Import into Blender
 
-1. Open Blender.
-2. Choose **File -> Import -> Motion Capture (.bvh)**. If the menu is unavailable, enable Blender's built-in **BioVision Motion Capture (BVH)** importer in Preferences -> Get Extensions/Add-ons (wording varies by Blender version).
+1. Open Blender and enable/install its BioVision Motion Capture (BVH) importer if it is not already available.
+2. Use **File -> Import -> Motion Capture (.bvh)**.
 3. Select `motionforge.bvh`.
-4. Inspect the armature in the Action Editor and play the timeline.
-5. Retarget to your character using a compatible retargeting workflow/add-on. The generated skeleton is a generic humanoid, not automatically mapped to every custom rig.
+4. Inspect the armature and Action in the timeline.
+5. Retarget the generic skeleton to your character separately. Automatic mapping to arbitrary custom rigs is not implemented yet.
 
 ## Google Colab
 
-Open `notebooks/MotionForge_Colab.ipynb` in Google Colab, upload a video and run the cells. Select a GPU runtime if available. The pose model can also run on CPU; GPU availability is not guaranteed.
+Open [MotionForge_Colab.ipynb](notebooks/MotionForge_Colab.ipynb) in Colab and run all cells. **Important:** this MVP uses MediaPipe's standard Python Pose solution and does not currently execute inference on the Colab GPU. Colab is a remote runtime, not GPU acceleration for this implementation.
 
 ## Capture tips
 
 - Keep the full body visible, including feet and hands.
-- Use a stable camera and bright, even lighting.
-- Avoid loose clothing and strong motion blur.
-- Record one person at a time.
-- Use a 5-20 second test clip first.
-- Keep the camera still for the first tests.
+- Use a stable camera, bright even lighting and minimal motion blur.
+- Record one person at a time; begin with a 5-10 second clip.
+- A side-on camera is useful for testing screen-plane movement.
 
-## Current limitations
+## Known limitations
 
 - Single-camera 3D estimates are approximate.
+- MediaPipe world landmarks are hip-centred. Root travel is approximated from normalized 2D image position using a rough scale; true depth and calibrated world translation are not recovered.
 - Fast movement and occluded limbs reduce accuracy.
-- Hands/fingers and facial expressions are not captured.
-- BVH export uses a generic joint hierarchy and approximate joint rotations; expect cleanup and retargeting.
-- This MVP is offline video processing, not live low-latency capture.
-- A Colab session may disconnect and free GPU resources.
+- Fingers and facial expressions are not captured.
+- BVH hierarchy and rotations are experimental. Expect cleanup; foot contact and retargeting are not solved.
+- This is offline video processing, not live low-latency capture.
+- Colab sessions can disconnect. GPU acceleration is not implemented in this version.
 
 ## Roadmap
 
-- [x] Repository MVP foundation
 - [x] Recorded-video pose extraction
-- [x] Smoothed landmark export
-- [x] Experimental BVH writer
-- [ ] Validate BVH against varied real-world clips
+- [x] Temporal smoothing
+- [x] Experimental BVH and CSV export
+- [ ] Validate BVH against varied clips and Blender import
 - [ ] Blender retargeting helper
-- [ ] Multi-person / hand tracking
-- [ ] Live capture with latency controls
-- [ ] Better foot contact and motion reconstruction
+- [ ] Better root trajectory and foot contact reconstruction
+- [ ] Live capture and latency controls
+- [ ] GPU-accelerated inference backend
 
 ## License
 
