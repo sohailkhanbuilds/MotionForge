@@ -7,7 +7,7 @@ name = "motionforge"
 version = "0.1.0"
 description = "Experimental markerless human motion capture to BVH"
 readme = "README.md"
-requires-python = ">=3.10,<3.12"
+requires-python = ">=3.10,<3.13"
 dependencies = [
   "mediapipe==0.10.21",
   "opencv-python==4.10.0.84",
