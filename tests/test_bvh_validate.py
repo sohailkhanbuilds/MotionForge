@@ -48,7 +48,11 @@ def test_validator_rejects_wrong_motion_row_width(tmp_path):
 def test_validator_rejects_non_finite_motion(tmp_path):
     path = tmp_path / "broken.bvh"
     export_bvh(make_frames(), 24, path)
-    text = path.read_text(encoding="utf-8").replace("0.00000", "nan", 1)
-    path.write_text(text, encoding="utf-8")
+    rows = path.read_text(encoding="utf-8").splitlines()
+    motion_start = rows.index("MOTION") + 3
+    rows[motion_start] = rows[motion_start].split()
+    rows[motion_start][0] = "nan"
+    rows[motion_start] = " ".join(rows[motion_start])
+    path.write_text("\\n".join(rows) + "\\n", encoding="utf-8")
     with pytest.raises(BVHValidationError):
         validate_bvh(path)
