@@ -91,7 +91,7 @@ To map BVH channels onto a character armature, pass `--target-armature HeroRig`.
 }
 ```
 
-The bridge bakes mapped local quaternion rotations into a new target action and copies root location. This is an **experimental local-channel transfer**, not full skeletal retargeting: it does not correct rest-pose differences, bone roll/axes, scale, proportions or IK constraints. Unmapped bones remain untouched. A wrong map can produce distorted motion, so inspect the result in Blender. Without a target armature, the character and BVH armature are imported separately.
+The bridge bakes mapped local quaternion rotations into a new target action and copies root location. This is an **experimental local-channel transfer**, not full skeletal retargeting: it does not correct rest-pose differences, bone roll/axes, scale, proportions or IK constraints. Unmapped bones remain untouched. The generated script now rejects non-string/blank bone names, duplicate targets, and mapped parent-child pairs whose immediate hierarchy disagrees. A wrong but structurally valid map can still produce distorted motion, so inspect the result in Blender. Without a target armature, the character and BVH armature are imported separately.
 
 Blender runtime compatibility must be tested with the user's installed Blender version and actual rig. The Python tests validate generated script syntax and configuration guards, not Blender's import operators or final animation quality.
 
