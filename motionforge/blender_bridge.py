@@ -173,6 +173,17 @@ def main():
                 if name in target.data.bones
             }
 
+        malformed = [
+            (source_name, target_bone_name)
+            for source_name, target_bone_name in bone_map.items()
+            if not isinstance(source_name, str)
+            or not source_name.strip()
+            or not isinstance(target_bone_name, str)
+            or not target_bone_name.strip()
+        ]
+        if malformed:
+            raise RuntimeError("Bone map keys and values must be non-empty bone name strings.")
+
         invalid = [
             source_name + " -> " + str(target_bone_name)
             for source_name, target_bone_name in bone_map.items()
@@ -184,6 +195,27 @@ def main():
             raise RuntimeError("No source-to-target bone pairs could be resolved.")
         if len(set(bone_map.values())) != len(bone_map):
             raise RuntimeError("Bone map must map each target bone only once.")
+
+        hierarchy_warnings = []
+        for source_name, target_name in bone_map.items():
+            source_parent = source.pose.bones[source_name].parent
+            target_parent = target.pose.bones[target_name].parent
+            mapped_parent = bone_map.get(source_parent.name) if source_parent else None
+            if mapped_parent is not None and (
+                target_parent is None or target_parent.name != mapped_parent
+            ):
+                hierarchy_warnings.append(
+                    source_name + " -> " + target_name
+                    + " (expected parent " + mapped_parent
+                    + ", actual " + (
+                        target_parent.name if target_parent else "<root>"
+                    ) + ")"
+                )
+        if hierarchy_warnings:
+            raise RuntimeError(
+                "Incompatible mapped bone hierarchy: "
+                + "; ".join(hierarchy_warnings)
+            )
 
         def bone_depth(pose_bone):
             depth = 0
