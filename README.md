@@ -80,9 +80,20 @@ Optionally import a character asset:
 python -m motionforge blender-script --bvh output/motion.bvh --script output/import_take.py --blend-output output/scene.blend --character assets/hero.glb
 ```
 
-To assign the imported action to a character armature, also pass `--target-armature HeroRig`. The named armature must already be imported from that character file and must contain every animated bone name from the BVH. The bridge checks bone names before assigning the action. It does not perform automatic retargeting, rest-pose correction, scale matching, skinning or arbitrary-rig compatibility. Without a target armature, the character and BVH armature are imported separately.
+To map BVH channels onto a character armature, pass `--target-armature HeroRig`. By default, identical bone names are mapped automatically. For different naming conventions, create a JSON file whose keys are BVH source bone names and whose values are target rig bone names, then pass `--bone-map config/bone-map.json`:
 
-Blender runtime compatibility must be tested with the user's installed Blender version and actual rig. The Python tests validate generated script syntax and guards, not Blender's import operators or animation result.
+```json
+{
+  "Hips": "pelvis",
+  "Spine": "spine_01",
+  "LeftArm": "upper_arm.L",
+  "RightArm": "upper_arm.R"
+}
+```
+
+The bridge bakes mapped local quaternion rotations into a new target action and copies root location. This is an **experimental local-channel transfer**, not full skeletal retargeting: it does not correct rest-pose differences, bone roll/axes, scale, proportions or IK constraints. Unmapped bones remain untouched. A wrong map can produce distorted motion, so inspect the result in Blender. Without a target armature, the character and BVH armature are imported separately.
+
+Blender runtime compatibility must be tested with the user's installed Blender version and actual rig. The Python tests validate generated script syntax and configuration guards, not Blender's import operators or final animation quality.
 
 ## Object tracking (experimental)
 
