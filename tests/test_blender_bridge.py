@@ -30,7 +30,7 @@ def test_character_import_and_guarded_action_assignment(tmp_path):
     ast.parse(script)
     assert "bpy.ops.import_scene.gltf" in script
     assert "target.animation_data.action = source_action" not in script
-    assert "MotionForge_Mapped_Retarget" in script
+    assert "MotionForge_RestPose_Retarget" in script
     assert "Target rig is not name-compatible" not in script
 
 
@@ -82,9 +82,12 @@ def test_custom_bone_map_is_embedded_as_runtime_path(tmp_path):
         bone_map_path=tmp_path / "map.json",
     )
     ast.parse(script)
-    assert "MotionForge_Mapped_Retarget" in script
+    assert "MotionForge_RestPose_Retarget" in script
     assert "source-to-target" in script
     assert "rotation_quaternion" in script
+    assert "source_rest_local.inverted()" in script
+    assert "target_rest_local @ delta" in script
+    assert "bone_depth" in script
 
 
 def test_bone_map_rejects_non_json_path(tmp_path):
@@ -96,3 +99,14 @@ def test_bone_map_rejects_non_json_path(tmp_path):
             target_armature="HeroRig",
             bone_map_path=tmp_path / "map.txt",
         )
+
+
+def test_generated_script_rejects_duplicate_target_bone_mapping(tmp_path):
+    script = generate_blender_import_script(
+        tmp_path / "walk.bvh",
+        tmp_path / "walk.blend",
+        character_path=tmp_path / "hero.glb",
+        target_armature="HeroRig",
+        bone_map_path=tmp_path / "map.json",
+    )
+    assert "Bone map must map each target bone only once" in script
