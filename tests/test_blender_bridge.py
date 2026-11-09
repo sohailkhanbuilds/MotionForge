@@ -126,3 +126,17 @@ def test_preview_scene_setup_is_optional_and_generated(tmp_path):
     assert "MotionForge_Preview_Camera" in preview_script
     assert "MotionForge_Preview_Floor" in preview_script
     assert '"preview_scene": false' in default_script
+
+
+def test_generated_script_guards_invalid_bone_names_and_hierarchy(tmp_path):
+    script = generate_blender_import_script(
+        tmp_path / "take.bvh",
+        tmp_path / "scene.blend",
+        character_path=tmp_path / "hero.glb",
+        target_armature="HeroRig",
+        bone_map_path=tmp_path / "bones.json",
+    )
+    ast.parse(script)
+    assert "Bone map keys and values must be non-empty bone name strings" in script
+    assert "Incompatible mapped bone hierarchy" in script
+    assert "mapped_parent = bone_map.get(source_parent.name)" in script
