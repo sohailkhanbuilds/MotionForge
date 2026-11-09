@@ -14,6 +14,8 @@ AI-assisted, markerless human motion capture for Blender.
 - Confidence-weighted Gaussian smoothing to reduce jitter while preserving movement.
 - Use a robust short-window reference pose and confidence-gate unreliable joints during BVH export.
 - Export a generic humanoid BVH and landmark CSV.
+- Render an annotated MP4 pose-tracking preview for visual quality checks.
+- Report per-frame and body-region detector visibility in metadata.
 - Colab notebook for remote execution; no paid API key.
 
 ## Requirements
