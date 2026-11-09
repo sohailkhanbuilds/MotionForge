@@ -8,7 +8,7 @@ from scipy.spatial.transform import Rotation
 
 HIERARCHY = [
     ("Hips", None, 23),
-    ("Spine", "Hips", 11), ("Neck", "Spine", 0), ("Head", "Neck", 0),
+    ("Spine", "Hips", 11), ("Neck", "Spine", None), ("Head", "Neck", None),
     ("LeftShoulder", "Spine", 11), ("LeftElbow", "LeftShoulder", 13), ("LeftWrist", "LeftElbow", 15),
     ("RightShoulder", "Spine", 12), ("RightElbow", "RightShoulder", 14), ("RightWrist", "RightElbow", 16),
     ("LeftUpLeg", "Hips", 25), ("LeftLeg", "LeftUpLeg", 27), ("LeftFoot", "LeftLeg", 31),
@@ -30,6 +30,9 @@ def _point(frame: np.ndarray, joint: str):
         return shoulders
     if joint == "Neck":
         return shoulders * 0.65 + frame[0, :3] * 0.35
+    if joint == "Head":
+        # MediaPipe ear landmarks give a more distinct head centre than nose.
+        return (frame[7, :3] + frame[8, :3]) * 0.5
     if joint == "LeftShoulder":
         return frame[11, :3]
     if joint == "RightShoulder":
@@ -46,6 +49,8 @@ def _joint_confidence(frame: np.ndarray, joint: str) -> float:
         indices = (11, 12)
     elif joint == "Neck":
         indices = (11, 12, 0)
+    elif joint == "Head":
+        indices = (7, 8)
     elif joint == "LeftShoulder":
         indices = (11,)
     elif joint == "RightShoulder":
@@ -98,7 +103,9 @@ def export_bvh(frames: np.ndarray, fps: float, output_path: str | Path):
     Root screen-plane translation is approximate; true camera-space depth is
     not reconstructed by this single-camera MVP.
     """
-    frames = np.asarray(frames)
+    frames = np.asarray(frames, dtype=np.float64)
+    if not np.isfinite(fps) or fps <= 0 or fps > 240:
+        raise ValueError("fps must be finite and in the range (0, 240].")
     if frames.ndim != 3 or frames.shape[1] < 33 or frames.shape[2] < 6:
         raise ValueError("frames must have shape (frames, 33, 6)")
     valid = [f for f in frames if float(f[:, 3].max()) > 0.2]
