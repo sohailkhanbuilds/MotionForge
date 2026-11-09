@@ -47,7 +47,7 @@ python -m venv .venv
 Windows PowerShell:
 
 ```powershell
-.venv\Scripts\Activate.ps1
+.venv\\Scripts\\Activate.ps1
 python -m pip install --upgrade pip
 pip install -e ".[dev]"
 ```
@@ -59,6 +59,30 @@ python -m motionforge --input path/to/video.mp4 --output-dir output --model-comp
 ```
 
 Outputs include experimental BVH, landmarks CSV, metadata and annotated pose preview.
+
+## Blender import bridge (experimental)
+
+MotionForge can generate a standalone Python script for Blender to import a BVH take and save a `.blend` scene. Blender is an optional external application; generating the script does not execute Blender.
+
+```bash
+python -m motionforge blender-script --bvh output/motion.bvh --script output/import_take.py --blend-output output/scene.blend
+```
+
+Run the generated script with Blender:
+
+```bash
+blender --background --python output/import_take.py
+```
+
+Optionally import a character asset:
+
+```bash
+python -m motionforge blender-script --bvh output/motion.bvh --script output/import_take.py --blend-output output/scene.blend --character assets/hero.glb
+```
+
+To assign the imported action to a character armature, also pass `--target-armature HeroRig`. The named armature must already be imported from that character file and must contain every animated bone name from the BVH. The bridge checks bone names before assigning the action. It does not perform automatic retargeting, rest-pose correction, scale matching, skinning or arbitrary-rig compatibility. Without a target armature, the character and BVH armature are imported separately.
+
+Blender runtime compatibility must be tested with the user's installed Blender version and actual rig. The Python tests validate generated script syntax and guards, not Blender's import operators or animation result.
 
 ## Object tracking (experimental)
 
