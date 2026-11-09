@@ -29,8 +29,9 @@ def test_character_import_and_guarded_action_assignment(tmp_path):
     )
     ast.parse(script)
     assert "bpy.ops.import_scene.gltf" in script
-    assert "target.animation_data.action = source_action" in script
-    assert "Target rig is not name-compatible" in script
+    assert "target.animation_data.action = source_action" not in script
+    assert "MotionForge_Mapped_Retarget" in script
+    assert "Target rig is not name-compatible" not in script
 
 
 def test_rejects_unsupported_character_format(tmp_path):
