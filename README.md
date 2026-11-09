@@ -121,3 +121,8 @@ print(report)
 ```
 
 The validator checks hierarchy/channel declarations, frame count, frame time, row width and finite numeric values. It validates MotionForge's current BVH dialect, not every third-party BVH variant. The canonical adapter currently exports the supported 16-joint skeleton; it is not a full skeletal mesh binding or production-grade anatomical rig. The current head/neck mapping is simplified and needs a dedicated hierarchy/rotation pass before claiming high-fidelity character animation.
+
+
+### BVH head/neck and input checks
+
+The current BVH writer now estimates the neck from shoulders plus the nose landmark, while the head centre is estimated independently from the two ear landmarks. The canonical retarget adapter maps its head joint to those ear positions. This is a more useful separation than reusing the nose for both joints, but it remains a coarse landmark-derived head pivot, not a full skull/neck anatomical rig. Export FPS is now checked for finite values in the range 0–240.
