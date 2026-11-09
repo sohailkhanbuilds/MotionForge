@@ -97,7 +97,7 @@ def create_preview_setup(armature):
     corners = [armature.matrix_world @ Vector(corner) for corner in armature.bound_box]
     if corners:
         min_z = min(point.z for point in corners)
-        center = sum(corners, Vector()) / len(corners)
+        center = sum(corners, Vector((0.0, 0.0, 0.0))) / len(corners)
         height = max(armature.dimensions.z, 1.0)
         span = max(armature.dimensions.x, armature.dimensions.y, height, 1.0)
     else:
