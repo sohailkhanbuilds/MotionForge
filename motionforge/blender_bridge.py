@@ -82,15 +82,12 @@ def main():
     if not os.path.isfile(CONFIG["bvh_path"]):
         raise FileNotFoundError("BVH file not found: " + CONFIG["bvh_path"])
 
+    objects_before_bvh_import = set(bpy.data.objects)
     bpy.ops.import_anim.bvh(filepath=CONFIG["bvh_path"])
     imported_armatures = [
-        obj for obj in bpy.context.selected_objects if obj.type == "ARMATURE"
+        obj for obj in bpy.data.objects
+        if obj not in objects_before_bvh_import and obj.type == "ARMATURE"
     ]
-    if not imported_armatures:
-        imported_armatures = [
-            obj for obj in bpy.data.objects
-            if obj.type == "ARMATURE" and obj.animation_data and obj.animation_data.action
-        ]
     if not imported_armatures:
         raise RuntimeError("Blender imported the BVH but no animated armature was found.")
 
