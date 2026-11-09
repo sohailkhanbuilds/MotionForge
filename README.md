@@ -92,3 +92,16 @@ profile.save("Hero.rig.json")
 ```
 
 Load it later with `RigProfile.load(...)` and pass its `bone_lengths` mapping to the sequence retargeter. Profiles currently describe canonical bone lengths in metres only; they do not create mesh skeletons, bind poses, skin weights or guarantee compatibility with arbitrary GLB/FBX rigs.
+
+
+Apply a saved profile to a canonical pose sequence:
+
+```python
+from motionforge.rig import RigProfile
+from motionforge.rig_retarget import retarget_to_profile
+
+target = RigProfile.load("Hero.rig.json")
+retargeted = retarget_to_profile(source_joint_frames, target)
+```
+
+The result is canonical joint-coordinate data, not a skinned character or a BVH/GLB export. Mesh binding and production-quality joint rotations remain future work.
