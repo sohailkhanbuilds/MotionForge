@@ -130,42 +130,93 @@ def main():
             }
 
         invalid = [
-            source_name + " -> " + str(target_name)
-            for source_name, target_name in bone_map.items()
-            if source_name not in source.pose.bones or target_name not in target.pose.bones
+            source_name + " -> " + str(target_bone_name)
+            for source_name, target_bone_name in bone_map.items()
+            if source_name not in source.pose.bones or target_bone_name not in target.pose.bones
         ]
         if invalid:
             raise RuntimeError("Bone map contains unknown bones: " + ", ".join(invalid))
         if not bone_map:
             raise RuntimeError("No source-to-target bone pairs could be resolved.")
+        if len(set(bone_map.values())) != len(bone_map):
+            raise RuntimeError("Bone map must map each target bone only once.")
 
-        # Bake mapped local pose channels into a new target action. This is a
-        # name-mapped local-channel transfer, not rest-pose-aware retargeting.
+        def bone_depth(pose_bone):
+            depth = 0
+            parent = pose_bone.parent
+            while parent is not None:
+                depth += 1
+                parent = parent.parent
+            return depth
+
+        ordered_pairs = sorted(
+            bone_map.items(),
+            key=lambda pair: bone_depth(source.pose.bones[pair[0]])
+        )
         target.animation_data_create()
-        target_action = bpy.data.actions.new("MotionForge_Mapped_Retarget")
+        target_action = bpy.data.actions.new("MotionForge_RestPose_Retarget")
         target.animation_data.action = target_action
         scene = bpy.context.scene
         start = int(source_action.frame_range[0]) if source_action else 1
         end = int(source_action.frame_range[1]) if source_action else 1
+
         for frame in range(start, end + 1):
             scene.frame_set(frame)
-            for source_name, target_bone_name in bone_map.items():
+            for target_bone in target.pose.bones:
+                target_bone.matrix_basis.identity()
+
+            for source_name, target_bone_name in ordered_pairs:
                 source_bone = source.pose.bones[source_name]
                 target_bone = target.pose.bones[target_bone_name]
+
+                source_rest_local = source_bone.bone.matrix_local.copy()
+                if source_bone.parent:
+                    source_rest_local = (
+                        source_bone.parent.bone.matrix_local.inverted()
+                        @ source_rest_local
+                    )
+                    source_pose_local = (
+                        source_bone.parent.matrix.inverted()
+                        @ source_bone.matrix
+                    )
+                else:
+                    source_pose_local = source_bone.matrix.copy()
+
+                target_rest_local = target_bone.bone.matrix_local.copy()
+                if target_bone.parent:
+                    target_rest_local = (
+                        target_bone.parent.bone.matrix_local.inverted()
+                        @ target_rest_local
+                    )
+                    target_parent_pose = target_bone.parent.matrix.copy()
+                else:
+                    target_parent_pose = None
+
+                delta = source_rest_local.inverted() @ source_pose_local
+                if source_bone.parent is not None:
+                    # Keep target segment lengths from its own rest pose.
+                    delta.translation = (0.0, 0.0, 0.0)
+
+                target_local_pose = target_rest_local @ delta
                 target_bone.rotation_mode = "QUATERNION"
-                target_bone.rotation_quaternion = source_bone.rotation_quaternion.copy()
+                target_bone.matrix = (
+                    target_parent_pose @ target_local_pose
+                    if target_parent_pose is not None
+                    else target_local_pose
+                )
+                target_bone.keyframe_insert(data_path="location", frame=frame)
                 target_bone.keyframe_insert(data_path="rotation_quaternion", frame=frame)
-                if source_bone.parent is None:
-                    target_bone.location = source_bone.location.copy()
-                    target_bone.keyframe_insert(data_path="location", frame=frame)
+                target_bone.keyframe_insert(data_path="scale", frame=frame)
+
         print(
-            "MotionForge mapped local channels:",
-            len(bone_map), "bones on", target.name,
+            "MotionForge rest-pose-aware mapped bake:",
+            len(ordered_pairs), "bones on", target.name,
             "frames", start, "to", end
         )
         print(
-            "WARNING: no rest-pose, bone-axis, scale or IK correction is applied; "
-            "inspect the result before use."
+            "WARNING: rest-pose local transforms are accounted for, but "
+            "bone-axis calibration, IK, twist distribution and contact solving "
+            "are not implemented. Inspect the result."
         )
     elif character_objects:
         print(
