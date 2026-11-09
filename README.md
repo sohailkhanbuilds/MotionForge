@@ -96,3 +96,14 @@ Open [MotionForge_Colab.ipynb](notebooks/MotionForge_Colab.ipynb) in Colab and r
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+
+## Optional object tracking (experimental)
+
+Track one visible object by selecting a tight first-frame bounding box in pixel coordinates:
+
+    python -m motionforge --input clip.mp4 --output-dir output --object-roi 120 80 90 90 --object-type ball
+
+Supported primitive types: ball, box, cube, cylinder, bottle, cone. This exports object_motion.json and object_animation.py. Open Blender, switch to the Scripting workspace, open and run object_animation.py to create a primitive with keyframed screen-plane motion.
+
+Limitations: the object ROI is manually selected; tracking can drift or fail during occlusion; geometry is a simple primitive; depth is not reconstructed; hand proximity is only a heuristic and does not create a verified grasp/parent constraint. The object is not yet automatically attached to the animated character rig.
