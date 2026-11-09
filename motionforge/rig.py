@@ -78,7 +78,7 @@ class RigProfile:
     def save(self, path: str | Path) -> Path:
         destination = Path(path)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(json.dumps(self.to_dict(), indent=2) + "\\n", encoding="utf-8")
+        destination.write_text(json.dumps(self.to_dict(), indent=2) + "\n", encoding="utf-8")
         return destination
 
     @classmethod
