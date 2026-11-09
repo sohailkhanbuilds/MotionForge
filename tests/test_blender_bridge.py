@@ -61,3 +61,37 @@ def test_write_script_creates_parent_directories(tmp_path):
     assert result == output
     assert output.is_file()
     ast.parse(output.read_text(encoding="utf-8"))
+
+
+def test_custom_bone_map_requires_character_and_target(tmp_path):
+    with pytest.raises(ValueError, match="requires both"):
+        generate_blender_import_script(
+            tmp_path / "walk.bvh",
+            tmp_path / "walk.blend",
+            bone_map_path=tmp_path / "map.json",
+        )
+
+
+def test_custom_bone_map_is_embedded_as_runtime_path(tmp_path):
+    script = generate_blender_import_script(
+        tmp_path / "walk.bvh",
+        tmp_path / "walk.blend",
+        character_path=tmp_path / "hero.fbx",
+        target_armature="HeroRig",
+        bone_map_path=tmp_path / "map.json",
+    )
+    ast.parse(script)
+    assert "MotionForge_Mapped_Retarget" in script
+    assert "source-to-target" in script
+    assert "rotation_quaternion" in script
+
+
+def test_bone_map_rejects_non_json_path(tmp_path):
+    with pytest.raises(ValueError, match="must be a .json"):
+        generate_blender_import_script(
+            tmp_path / "walk.bvh",
+            tmp_path / "walk.blend",
+            character_path=tmp_path / "hero.glb",
+            target_armature="HeroRig",
+            bone_map_path=tmp_path / "map.txt",
+        )
