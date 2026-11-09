@@ -49,8 +49,11 @@ def canonical_to_landmarks(frames: np.ndarray) -> np.ndarray:
         values[:, JOINT_INDEX["Neck"], :] - 0.65 * shoulder_mid
     ) / 0.35
     result[:, 0, 3] = 1.0
-    # Head position is represented by the same source landmark in the current
-    # generic BVH topology; it is not a full anatomical head/neck rig.
+    # Map the canonical head centre to both ear landmarks so the BVH writer
+    # can reconstruct a distinct head point above the neck.
+    for landmark in (7, 8):
+        result[:, landmark, :3] = values[:, JOINT_INDEX["Head"], :]
+        result[:, landmark, 3] = 1.0
     return result
 
 
