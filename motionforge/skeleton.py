@@ -60,8 +60,6 @@ def validate_skeleton(joints: Iterable[Joint] = JOINTS) -> None:
         raise SkeletonError("Joint names must be unique.")
     known = set(names)
     roots = [joint for joint in items if joint.parent is None]
-    if len(roots) != 1:
-        raise SkeletonError("A humanoid skeleton must have exactly one root.")
     for joint in items:
         if joint.parent is not None and joint.parent not in known:
             raise SkeletonError(f"Unknown parent {joint.parent!r} for {joint.name!r}.")
@@ -80,6 +78,8 @@ def validate_skeleton(joints: Iterable[Joint] = JOINTS) -> None:
                 raise SkeletonError(f"Cycle detected at joint {cursor!r}.")
             visited.add(cursor)
             cursor = parents[cursor]
+    if len(roots) != 1:
+        raise SkeletonError("A humanoid skeleton must have exactly one root.")
 
 
 def joint_positions(frame: np.ndarray) -> dict[str, np.ndarray]:
