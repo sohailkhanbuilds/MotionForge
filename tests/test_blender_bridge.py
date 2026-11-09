@@ -110,3 +110,19 @@ def test_generated_script_rejects_duplicate_target_bone_mapping(tmp_path):
         bone_map_path=tmp_path / "map.json",
     )
     assert "Bone map must map each target bone only once" in script
+
+
+
+def test_preview_scene_setup_is_optional_and_generated(tmp_path):
+    default_script = generate_blender_import_script(
+        tmp_path / "walk.bvh", tmp_path / "walk.blend"
+    )
+    preview_script = generate_blender_import_script(
+        tmp_path / "walk.bvh", tmp_path / "walk.blend", preview_scene=True
+    )
+    ast.parse(preview_script)
+    assert '"preview_scene": true' in preview_script
+    assert "create_preview_setup(source)" in preview_script
+    assert "MotionForge_Preview_Camera" in preview_script
+    assert "MotionForge_Preview_Floor" in preview_script
+    assert '"preview_scene": false' in default_script
