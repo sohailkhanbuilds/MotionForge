@@ -78,3 +78,17 @@ Open [MotionForge_Colab.ipynb](notebooks/MotionForge_Colab.ipynb). The current M
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+
+## Target rig profiles (experimental)
+
+Create a reusable canonical humanoid bone-length profile from a clean reference pose:
+
+```python
+from motionforge.rig import RigProfile
+
+profile = RigProfile.from_pose("Hero", reference_frame)
+profile.save("Hero.rig.json")
+```
+
+Load it later with `RigProfile.load(...)` and pass its `bone_lengths` mapping to the sequence retargeter. Profiles currently describe canonical bone lengths in metres only; they do not create mesh skeletons, bind poses, skin weights or guarantee compatibility with arbitrary GLB/FBX rigs.
