@@ -105,3 +105,19 @@ retargeted = retarget_to_profile(source_joint_frames, target)
 ```
 
 The result is canonical joint-coordinate data, not a skinned character or a BVH/GLB export. Mesh binding and production-quality joint rotations remain future work.
+
+
+## Retargeted BVH export and validation (experimental)
+
+A canonical retargeted sequence can be adapted to the current generic BVH hierarchy:
+
+```python
+from motionforge.canonical_bvh import export_canonical_bvh
+from motionforge.bvh_validate import validate_bvh
+
+export_canonical_bvh(retargeted_frames, fps=30, output_path="exports/hero.bvh")
+report = validate_bvh("exports/hero.bvh")
+print(report)
+```
+
+The validator checks hierarchy/channel declarations, frame count, frame time, row width and finite numeric values. It validates MotionForge's current BVH dialect, not every third-party BVH variant. The canonical adapter currently exports the supported 16-joint skeleton; it is not a full skeletal mesh binding or production-grade anatomical rig. The current head/neck mapping is simplified and needs a dedicated hierarchy/rotation pass before claiming high-fidelity character animation.
