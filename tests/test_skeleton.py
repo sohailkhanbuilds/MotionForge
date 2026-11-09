@@ -29,6 +29,7 @@ def test_joint_positions_average_synthesized_joints():
     frame[:, 3] = 1.0
     frame[23, :3] = (1, 2, 3)
     frame[24, :3] = (3, 4, 5)
+    frame[15, 3] = 0.0
     positions = joint_positions(frame)
     np.testing.assert_allclose(positions["Hips"], (2, 3, 4))
     assert np.isnan(positions["LeftWrist"]).all()
