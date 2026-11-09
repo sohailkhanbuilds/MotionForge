@@ -18,7 +18,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--character", help="Optional character .fbx, .glb or .gltf asset")
     parser.add_argument(
         "--target-armature",
-        help="Optional imported Blender armature object name; bone names must match the BVH",
+        help="Optional imported Blender armature object name",
+    )
+    parser.add_argument(
+        "--bone-map",
+        help="Optional JSON object mapping BVH source bone names to target rig bone names",
     )
     return parser
 
@@ -31,6 +35,7 @@ def main(argv: list[str] | None = None) -> int:
         blend_output=args.blend_output,
         character_path=args.character,
         target_armature=args.target_armature,
+        bone_map_path=args.bone_map,
     )
     print(f"Blender script written: {path}")
     print("Run it with: blender --background --python " + str(path))
