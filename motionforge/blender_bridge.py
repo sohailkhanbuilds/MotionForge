@@ -197,15 +197,15 @@ def main():
             raise RuntimeError("Bone map must map each target bone only once.")
 
         hierarchy_warnings = []
-        for source_name, target_name in bone_map.items():
+        for source_name, mapped_target_name in bone_map.items():
             source_parent = source.pose.bones[source_name].parent
-            target_parent = target.pose.bones[target_name].parent
+            target_parent = target.pose.bones[mapped_target_name].parent
             mapped_parent = bone_map.get(source_parent.name) if source_parent else None
             if mapped_parent is not None and (
                 target_parent is None or target_parent.name != mapped_parent
             ):
                 hierarchy_warnings.append(
-                    source_name + " -> " + target_name
+                    source_name + " -> " + mapped_target_name
                     + " (expected parent " + mapped_parent
                     + ", actual " + (
                         target_parent.name if target_parent else "<root>"
